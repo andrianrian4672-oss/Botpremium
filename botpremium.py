@@ -20,25 +20,41 @@ HEADERS = {
     "X-API-Key": API_KEY
 }
 
-HEADERS = {
-    "Content-Type": "application/json",
-    "X-API-Key": API_KEY
-}
-
 TURN_DELAY = 60  
 
-# ================== SISTEM MEMORI ==================
+# ================== SISTEM MEMORI & RECOVERY ==================
 safe_bot_name = re.sub(r'[^a-zA-Z0-9_]', '', BOT_NAME)
 SESSION_FILE = f"session_VIP_{safe_bot_name}.json"
 
 def load_session():
+    # 1. Coba baca dari file lokal (kalau masih ada)
     if os.path.exists(SESSION_FILE):
         try:
             with open(SESSION_FILE, "r") as f:
                 data = json.load(f)
-                return data.get("game_id"), data.get("agent_id")
+                if data.get("game_id") and data.get("agent_id"):
+                    return data.get("game_id"), data.get("agent_id")
         except Exception:
             pass
+
+    # 2. JALUR DARURAT (RECOVERY NYANGKUT)
+    try:
+        print(f"🔍 [{BOT_NAME}] Mengecek riwayat game VIP yang sedang berjalan di server...")
+        res = requests.get(f"{BASE_URL}/accounts/me", headers=HEADERS, timeout=10).json()
+        
+        if res.get("success"):
+            current_games = res.get("data", {}).get("currentGames", [])
+            for g in current_games:
+                # Cari game PAID/PREMIUM yang statusnya belum selesai
+                if g.get("entryType") in ["paid", "premium"] and g.get("gameStatus") in ["waiting", "running"]:
+                    g_id = g.get("gameId")
+                    a_id = g.get("agentId")
+                    print(f"🚨 AHA! Ketemu Tuyul VIP lagi nunggu/main di Game: {g_id[-5:]}")
+                    save_session(g_id, a_id) # Simpan paksa ke memori lokal
+                    return g_id, a_id
+    except Exception as e:
+        print(f"⚠️ Gagal cek server recovery: {e}")
+
     return None, None
 
 def save_session(game_id, agent_id):
@@ -71,7 +87,7 @@ def smart_print(bot_memory, text):
 # ================== API HANDLERS (KHUSUS PREMIUM) ==================
 def get_waiting_premium_game():
     MAX_PERCOBAAN = 10 
-    print(f"🔍 [{get_waktu()}] [{BOT_NAME}] Radar VIP Aktif! Mencari room BERBAYAR (PAID)...")
+    print(f"🔍 [{get_waktu()}] [{BOT_NAME}] Radar VIP Aktif! Mencari room BERBAYAR (PAID/PREMIUM)...")
     url = f"{BASE_URL}/games?status=waiting"
     
     for attempt in range(1, MAX_PERCOBAAN + 1):
@@ -84,7 +100,7 @@ def get_waiting_premium_game():
                     status_game = game.get("status", "").lower()
                     entry_type = game.get("entryType", "").lower()
                     
-                    # 🔥 HANYA MAU MASUK ROOM PAID 🔥
+                    # 🔥 RADAR UDAH BISA BACA LABEL 'PREMIUM' 🔥
                     if status_game == "waiting" and entry_type in ["paid", "premium"]:
                         print(f"✅ [{get_waktu()}] [{BOT_NAME}] Nemu Room VIP: {game.get('name')}")
                         return game["id"]
@@ -114,7 +130,9 @@ def join_paid_game(game_id, private_key):
         print(f"✍️ [{BOT_NAME}] Menandatangani transaksi Web3...")
         account = Account.from_key(private_key)
         signed_message = account.sign_typed_data(full_message=eip712_data)
-        signature = "0x" + signed_message.signature.hex()
+        
+        # 🔥 FIX 0x SIGNATURE 🔥
+        signature = "0x" + signed_message.signature.hex() 
         
         # 3. Serahkan Tanda Tangan ke Server
         payload = {
