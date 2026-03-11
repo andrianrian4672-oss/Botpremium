@@ -22,6 +22,20 @@ HEADERS = {
 
 TURN_DELAY = 60  
 
+TURN_DELAY = 60  
+
+# ================== RADAR TELEGRAM ==================
+TELEGRAM_TOKEN = "8725258727:AAGeiRemKzKg448E7c_sJZIxCJnBkTbklIE"
+TELEGRAM_CHAT_ID = "1338856233"
+
+def kirim_telegram(pesan):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": pesan}
+    try:
+        requests.post(url, data=payload, timeout=5)
+    except Exception:
+        pass
+
 # ================== SISTEM MEMORI & RECOVERY ==================
 safe_bot_name = re.sub(r'[^a-zA-Z0-9_]', '', BOT_NAME)
 SESSION_FILE = f"session_VIP_{safe_bot_name}.json"
@@ -715,12 +729,23 @@ def cetak_laporan_kemenangan(state):
     self_data = state.get("self", {})
     hp_akhir = self_data.get("hp", "?")
     inventory = self_data.get("inventory", [])
+    
+    # Cetak di terminal Railway
     print("\n" + "💎"*25)
     print("  🎉🔥 JACKPOT VIP! 8000 MOLTZ + 160 CROSS! 🔥🎉")
     print("💎"*25)
     print(f"  👑 Sultan : {BOT_NAME.upper()}")
     print(f"  ❤️ Sisa HP: {hp_akhir}/100")
     print("==================================================\n")
+    
+    # 🔥 KIRIM NOTIF KE HP BOS 🔥
+    pesan_tele = (
+        f"🎉🎉 JACKPOT VIP! 8000 MOLTZ! 🎉🎉\n\n"
+        f"👑 Sang Sultan: {BOT_NAME.upper()}\n"
+        f"❤️ Sisa HP: {hp_akhir}/100\n\n"
+        f"🔥 Cek dompet sekarang Bosku!"
+    )
+    kirim_telegram(pesan_tele)
 
 def cetak_laporan_forensik(bot_memory, current_state):
     print("\n" + "="*50)
@@ -732,11 +757,23 @@ def cetak_laporan_forensik(bot_memory, current_state):
         
     self_data = state_sumber.get("self", {})
     region = state_sumber.get("currentRegion", {})
+    killer = self_data.get('killerName', self_data.get('killer', 'Unknown'))
+    tkp = region.get('name', '?')
     
-    if "killerName" in self_data or "killer" in self_data:
-        print(f"🩸 Tersangka: {self_data.get('killerName', self_data.get('killer', 'Unknown'))}")
-    print(f"🕵️ TKP: {region.get('name', '?')}")
+    # Cetak di terminal Railway
+    print(f"🩸 Tersangka: {killer}")
+    print(f"🕵️ TKP: {tkp}")
     print("="*50 + "\n")
+    
+    # 🔥 KIRIM NOTIF DUKA KE HP BOS 🔥
+    pesan_tele = (
+        f"💀 VIP GUGUR! (100 MOLTZ HANGUS) 💀\n\n"
+        f"🤖 Korban: {BOT_NAME.upper()}\n"
+        f"🩸 Dibunuh oleh: {killer}\n"
+        f"🕵️ Lokasi TKP: {tkp}\n\n"
+        f"💸 Sabar Bosku, balas di match selanjutnya!"
+    )
+    kirim_telegram(pesan_tele)
 
 # ================== MAIN PROCESS (ONE-SHOT + FAST SNIPER) ==================
 def main():
