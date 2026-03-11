@@ -114,7 +114,7 @@ def join_paid_game(game_id, private_key):
         print(f"✍️ [{BOT_NAME}] Menandatangani transaksi Web3...")
         account = Account.from_key(private_key)
         signed_message = account.sign_typed_data(full_message=eip712_data)
-        signature = signed_message.signature.hex()
+        signature = "0x" + signed_message.signature.hex()
         
         # 3. Serahkan Tanda Tangan ke Server
         payload = {
