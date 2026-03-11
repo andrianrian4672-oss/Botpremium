@@ -4,7 +4,6 @@ import subprocess
 import sys
 import time
 
-# Daftar 5 Tuyul VIP Bos (Sesuai urutan txt)
 BOTS = [
     {"name": "Peaxel_Max", "api_env": "API_KEY_MAX", "priv_env": "PRIV_KEY_MAX"},
     {"name": "Peaxel_Lite", "api_env": "API_KEY_LITE", "priv_env": "PRIV_KEY_LITE"},
@@ -14,14 +13,15 @@ BOTS = [
 ]
 
 def run_bot(bot_name, api_key, private_key):
-    # Duplikat environment Railway, lalu timpa dengan data masing-masing bot
     env = os.environ.copy()
     env["BOT_NAME"] = bot_name
     env["API_KEY"] = api_key
     env["PRIVATE_KEY"] = private_key
-    
-    # Menjalankan botpremium.py
     subprocess.run([sys.executable, "botpremium.py"], env=env)
+
+def run_radar():
+    env = os.environ.copy()
+    subprocess.run([sys.executable, "radartele.py"], env=env)
 
 if __name__ == "__main__":
     print("="*50)
@@ -30,6 +30,14 @@ if __name__ == "__main__":
     
     threads = []
     
+    # 🔥 1. NYALAKAN RADAR TELEGRAM DULUAN 🔥
+    print("📡 Mengaktifkan Radar Web3 Telegram...")
+    t_radar = threading.Thread(target=run_radar)
+    t_radar.daemon = True # Biar radar ikut mati kalau program utama dimatikan
+    t_radar.start()
+    time.sleep(2)
+    
+    # 🔥 2. LEPAS 5 TUYUL VIP 🔥
     for bot in BOTS:
         api_key = os.environ.get(bot["api_env"], "")
         private_key = os.environ.get(bot["priv_env"], "")
@@ -39,11 +47,10 @@ if __name__ == "__main__":
             t = threading.Thread(target=run_bot, args=(bot['name'], api_key, private_key))
             t.start()
             threads.append(t)
-            time.sleep(3) # Jeda 3 detik per bot biar server gamenya nggak kaget
+            time.sleep(3) 
         else:
             print(f"⚠️ {bot['name']} ditahan! {bot['api_env']} atau {bot['priv_env']} kosong di Variables Railway.")
             
-    # Tunggu sampai semua pertempuran selesai
     for t in threads:
         t.join()
         
