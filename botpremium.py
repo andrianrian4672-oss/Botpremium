@@ -85,7 +85,7 @@ def get_waiting_premium_game():
                     entry_type = game.get("entryType", "").lower()
                     
                     # 🔥 HANYA MAU MASUK ROOM PAID 🔥
-                    if status_game == "waiting" and entry_type == "paid":
+                    if status_game == "waiting" and entry_type in ["paid", "premium"]:
                         print(f"✅ [{get_waktu()}] [{BOT_NAME}] Nemu Room VIP: {game.get('name')}")
                         return game["id"]
         except Exception as e:
