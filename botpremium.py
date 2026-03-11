@@ -115,41 +115,44 @@ def get_waiting_premium_game():
     return None
 
 def join_paid_game(game_id, private_key):
-    print(f"🧾 [{BOT_NAME}] Meminta kontrak EIP-712 untuk Room VIP (Taruhan 100 $Moltz)...")
+    print(f"📄 [{BOT_NAME}] Meminta kontrak EIP-712 untuk Room VIP...")
     try:
-        res_msg = requests.get(f"{BASE_URL}/games/{game_id}/join-paid/message", headers=HEADERS).json()
-        if not res_msg.get("success"):
-            print(f"⚠️ Gagal dapat kontrak VIP: {res_msg.get('error', {}).get('message', res_msg)}")
+        # 1. Ambil data EIP-712
+        res_msg = requests.get(f"{BASE_URL}/games/{game_id}/join-paid/message", headers=HEADERS)
+        if not res_msg.json().get("success"):
+            print(f"⚠️ Gagal dapat kontrak VIP: {res_msg.json().get('error', {}).get('message')}")
             return None
-        
-        eip712_data = res_msg["data"]
+
+        eip712_data = res_msg.json()["data"]
         deadline = eip712_data["message"]["deadline"]
-        
-        print(f"✍️ [{BOT_NAME}] Menandatangani transaksi Web3...")
+
+        # 2. Tanda tangan transaksi Web3
+        print(f"✍️ [{BOT_NAME}] Menandatangi transaksi Web3...")
         account = Account.from_key(private_key)
         signed_message = account.sign_typed_data(full_message=eip712_data)
-        signature = "0x" + signed_message.signature.hex() 
-        
+        signature = "0x" + signed_message.signature.hex()
+
+        # 3. KIRIM PAYLOAD (Ini yang kurang di gambar Bos!)
         payload = {
             "deadline": str(deadline),
             "signature": signature
         }
-        res_join = requests.post(f"{BASE_URL}/games/{game_id}/join-paid", headers=HEADERS, json=payload).json()
+        res_join = requests.post(f"{BASE_URL}/games/{game_id}/join-paid", headers=HEADERS, json=payload)
         
-        if not res_join.get("success"):
-            pesan_error = res_join.get("error", {}).get("message", "Misterius")
-            print(f"⚠️ DITOLAK MASUK VIP: {pesan_error}")
-            return None
+        if res_join.status_code in [200, 201] and res_join.json().get("success"):
+            print(f"✅ [{BOT_NAME}] BERHASIL DAFTAR VIP! (Tiket dipotong dari SC Wallet)")
             
-        agent_id = res_join["data"]["agentId"]
-        tx_hash = res_join["data"].get("txHash", "0x...")
-        print(f"✅ [{BOT_NAME}] BERHASIL BAYAR TIKET! Masuk VIP (ID: {agent_id})")
-        print(f"🔗 TxHash: {tx_hash}")
-        return agent_id
-        
+            # 4. Ambil UUID Agent (Wajib buat main!)
+            me = requests.get(f"{BASE_URL}/accounts/me", headers=HEADERS).json()
+            for g in me.get("data", {}).get("currentGames", []):
+                if g["gameId"] == game_id:
+                    return g["agentId"]
+        else:
+            print(f"❌ Gagal Join: {res_join.json().get('error', {}).get('message')}")
+            
     except Exception as e:
-        print(f"⚠️ Error proses Web3: {e}")
-        return None
+        print(f"💥 Error saat pendaftaran VIP: {e}")
+    return None
 
 def start_game(game_id):
     requests.post(f"{BASE_URL}/games/{game_id}/start", headers=HEADERS)
